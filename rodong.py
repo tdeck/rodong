@@ -1,9 +1,10 @@
+# coding=UTF-8
 # Simple library to grab articles from rodong.rep.kp/en
 # by Troy Deck
 from requests import Session
 from lxml import html
 from UserDict import DictMixin
-from itertools import count
+import re
 
 DOMAIN = 'http://rodong.rep.kp'
 SECTIONS = {
@@ -39,23 +40,40 @@ class RodongSinmun(DictMixin):
 
         articles = []
         for page in count(1):
-            url = DOMAIN + SECTIONS[section_key] + '&page=' + str(page)
+            if page > 50:
+                raise Exception('Last page detection is probably broken')
+
+            url = '{domain}{section}&iMenuID=1&iSubMenuID={page}'.format(
+                domain = DOMAIN,
+                section = SECTIONS[section_key],
+                page = page
+            )
+
             body = self._session.get(url).content
 
-            # Check first that we haven't gone beyond the last page
-            # The website uses a javascript redirect embedded halfway
-            # down the page to send you back to the first page (!)
-            if 'location.href=' in body:
+            # This is a very hacky way of detecting the last page
+            # that will probably break again in the future
+            if "알수 없는 주소" in body: # "Unknown Address"
                 break
 
             # Parse out all the article links
             root = html.fromstring(body)
             title_lines = root.find_class('ListNewsLineTitle')
             for title_line in title_lines:
+                title_link = title_line.find('a')
+
+                # The links do a JS open in a new window, so we need to parse
+                # it out using this ugly, brittle junk
+                href = title_link.get('href')
+                match = re.match("javascript:article_open\('(.+)'\)", href)
+                if not match:
+                    raise Exception("The site's link format has changed and is not compatible")
+                path = match.group(1).decode('string_escape')
+
                 articles.append(Article(
                     self._session,
-                    title_line.text_content().strip(),
-                    DOMAIN + '/en/' + title_line.find('a').get('href')
+                    title_link.text_content().strip(),
+                    DOMAIN + '/en/' + path
                 ))
 
         self._sections[section_key] = articles
@@ -86,13 +104,12 @@ class Article(object):
         root = html.fromstring(body)
         self._text = "\n".join((
             p_tag.text_content()
-                for p_tag in root.findall('*/table//p')
-                if p_tag.get('style') == 'text-align: justify'
+                for p_tag in root.findall('.//p[@class="ArticleContent"]')
+                if 'justify' in p_tag.get('style', '')
         ))
-        self._photos = [
-            DOMAIN + image.get('src')
-                for image in root.findall('*/table//img')
-        ]
+
+        # TODO fix this
+        self._photos = []
 
     @property
     def text(self):
