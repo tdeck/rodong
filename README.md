@@ -6,6 +6,10 @@ This Python module gives you programmatic access to the wisdom of the Supreme Le
 
 Quick start
 -----------
+```shell
+pip install rodong
+```
+
 ```python
 from rodong import RodongSinmun
 
