@@ -4,6 +4,7 @@
 from requests import Session
 from lxml import html
 from UserDict import DictMixin
+from itertools import count
 import re
 
 DOMAIN = 'http://rodong.rep.kp'
