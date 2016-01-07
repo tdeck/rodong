@@ -8,7 +8,7 @@ setup(
     name='rodong',
     version='1.0.0',
     description='Scrape articles from Rodong Sinumn, the North Korean news agency',
-    long_description=read('README.md'),
+    long_description=read('README.rst'),
     url='https://github.com/tdeck/rodong',
     license='MIT',
     author='Troy Deck',
